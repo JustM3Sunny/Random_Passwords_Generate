@@ -1,15 +1,19 @@
 🛡️ Random Password Generator
+
 ⚡ Features
+
 Customizable Passwords: Generate as many passwords as you need, with your chosen length.
 Strong Security: Uses uppercase, lowercase, numbers, and special characters.
 File Storage: Saves all passwords in passwords.txt for easy access.
+
 🚀 How to Use
+
 Compile:
-bash
+
 Copy code
 gcc password_generator.c -o password_generator
 Run:
-bash
+
 Copy code
 ./password_generator
 Input:
@@ -19,10 +23,11 @@ View Output:
 Passwords are displayed on the terminal.
 Check passwords.txt for all saved passwords.
 📂 Example
-bash
+
 Copy code
 Enter the number of passwords to generate: 2
 Enter the length of each password: 8
+
 
 Generated Passwords:
 1: a3$XyT@q
