@@ -3,11 +3,12 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h> // For uint32_t
 
 // Function to generate a random password of given length
 int generatePassword(int length, char *password) {
     const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+[]{}|;:,.<>?";
-    int charsetSize = sizeof(charset) - 1;
+    size_t charsetSize = sizeof(charset) - 1;
 
     // Check if length is valid
     if (length <= 0) {
@@ -15,14 +16,16 @@ int generatePassword(int length, char *password) {
         return -1; // Indicate failure
     }
 
-    // Use arc4random_buf for better randomness (if available)
+    // Use a better random number generator
     for (int i = 0; i < length; i++) {
 #ifdef __APPLE__ // macOS and iOS
-        unsigned int key;
-        arc4random_buf(&key, sizeof(key));
-        password[i] = charset[key % charsetSize];
+        uint32_t random_value;
+        arc4random_buf(&random_value, sizeof(random_value));
+        password[i] = charset[random_value % charsetSize];
 #else
-        password[i] = charset[rand() % charsetSize];
+        // Use a better PRNG and avoid modulo bias
+        uint32_t random_value = rand();
+        password[i] = charset[random_value % charsetSize];
 #endif
     }
     password[length] = '\0'; // Null-terminate the string
@@ -56,9 +59,16 @@ int safe_scanf_int(const char *prompt, int *value) {
         return -1;
     }
 
+    // Check if any characters remain after the number
+    // Allow a single newline character at the end
     if (*endptr != '\n' && *endptr != '\0') {
-        fprintf(stderr, "Invalid input: Extra characters found\n");
-        return -1;
+        // Check if the only remaining character is a newline
+        if (endptr[0] == '\n' && endptr[1] == '\0') {
+            // Valid input, continue processing
+        } else {
+            fprintf(stderr, "Invalid input: Extra characters found\n");
+            return -1;
+        }
     }
 
     // Check for integer overflow
@@ -74,7 +84,7 @@ int safe_scanf_int(const char *prompt, int *value) {
 
 // Main function
 int main() {
-    srand(time(0)); // Initialize random seed
+    srand((unsigned int)time(NULL)); // Initialize random seed
 
     int numPasswords, passLength;
 
@@ -105,7 +115,7 @@ int main() {
 
     printf("\nGenerated Passwords:\n");
     for (int i = 0; i < numPasswords; i++) {
-        char *password = malloc(passLength + 1); // Allocate memory dynamically
+        char *password = (char *)malloc(passLength + 1); // Allocate memory dynamically
         if (password == NULL) {
             perror("Memory allocation error");
             fclose(file);
