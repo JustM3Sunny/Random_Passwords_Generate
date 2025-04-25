@@ -4,6 +4,12 @@
 #include <string.h>
 #include <errno.h>
 #include <stdint.h> // For uint32_t
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/random.h>
+#endif
 
 // Function to generate a random password of given length
 int generatePassword(int length, char *password) {
@@ -18,15 +24,21 @@ int generatePassword(int length, char *password) {
 
     // Use a better random number generator
     for (int i = 0; i < length; i++) {
-#ifdef __APPLE__ // macOS and iOS
-        uint32_t random_value;
+        unsigned int random_value;
+#ifdef _WIN32
+        if (rand_s(&random_value) != 0) {
+            fprintf(stderr, "Error generating random number.\n");
+            return -1;
+        }
+#elif defined(__APPLE__) // macOS and iOS
         arc4random_buf(&random_value, sizeof(random_value));
-        password[i] = charset[random_value % charsetSize];
 #else
-        // Use a better PRNG and avoid modulo bias
-        uint32_t random_value = rand();
-        password[i] = charset[random_value % charsetSize];
+        if (getrandom(&random_value, sizeof(random_value), GRND_NONBLOCK) != sizeof(random_value)) {
+            fprintf(stderr, "Error generating random number.\n");
+            return -1;
+        }
 #endif
+        password[i] = charset[random_value % charsetSize];
     }
     password[length] = '\0'; // Null-terminate the string
     return 0; // Indicate success
@@ -62,13 +74,8 @@ int safe_scanf_int(const char *prompt, int *value) {
     // Check if any characters remain after the number
     // Allow a single newline character at the end
     if (*endptr != '\n' && *endptr != '\0') {
-        // Check if the only remaining character is a newline
-        if (endptr[0] == '\n' && endptr[1] == '\0') {
-            // Valid input, continue processing
-        } else {
-            fprintf(stderr, "Invalid input: Extra characters found\n");
-            return -1;
-        }
+        fprintf(stderr, "Invalid input: Extra characters found\n");
+        return -1;
     }
 
     // Check for integer overflow
@@ -84,7 +91,7 @@ int safe_scanf_int(const char *prompt, int *value) {
 
 // Main function
 int main() {
-    srand((unsigned int)time(NULL)); // Initialize random seed
+    // Removed srand as more secure random number generators are used.
 
     int numPasswords, passLength;
 
