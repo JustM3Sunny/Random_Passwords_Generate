@@ -6,6 +6,8 @@
 #include <stdint.h> // For uint32_t
 #ifdef _WIN32
 #include <windows.h>
+#include <bcrypt.h>
+#pragma comment(lib, "Bcrypt.lib") // Link with Bcrypt.lib
 #else
 #include <unistd.h>
 #include <sys/random.h>
@@ -26,7 +28,7 @@ int generatePassword(int length, char *password) {
     for (int i = 0; i < length; i++) {
         unsigned int random_value;
 #ifdef _WIN32
-        if (rand_s(&random_value) != 0) {
+        if (BCryptGenRandom(NULL, (PUCHAR)&random_value, sizeof(random_value), BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
             fprintf(stderr, "Error generating random number.\n");
             return -1;
         }
@@ -47,6 +49,8 @@ int generatePassword(int length, char *password) {
 // Function to safely read an integer from stdin
 int safe_scanf_int(const char *prompt, int *value) {
     char buffer[256]; // Use a buffer to prevent buffer overflows
+    char *endptr;
+    long temp;
 
     printf("%s", prompt);
     if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
@@ -54,10 +58,15 @@ int safe_scanf_int(const char *prompt, int *value) {
         return -1; // Indicate failure
     }
 
+    // Remove trailing newline, if present
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\n') {
+        buffer[len - 1] = '\0';
+    }
+
     // Attempt to convert the input to an integer
-    char *endptr;
     errno = 0; // Reset errno before the call
-    long temp = strtol(buffer, &endptr, 10);
+    temp = strtol(buffer, &endptr, 10);
 
     // Check for errors during conversion
     if (errno != 0) {
@@ -72,8 +81,7 @@ int safe_scanf_int(const char *prompt, int *value) {
     }
 
     // Check if any characters remain after the number
-    // Allow a single newline character at the end
-    if (*endptr != '\n' && *endptr != '\0') {
+    if (*endptr != '\0') {
         fprintf(stderr, "Invalid input: Extra characters found\n");
         return -1;
     }
@@ -91,8 +99,6 @@ int safe_scanf_int(const char *prompt, int *value) {
 
 // Main function
 int main() {
-    // Removed srand as more secure random number generators are used.
-
     int numPasswords, passLength;
 
     // Input number of passwords and their length
@@ -111,6 +117,12 @@ int main() {
 
     if (passLength <= 0) {
         printf("Password length must be greater than 0.\n");
+        return 1;
+    }
+
+    // Validate password length to prevent excessive memory allocation
+    if (passLength > 1024) {
+        printf("Password length is too large. Please enter a value less than or equal to 1024.\n");
         return 1;
     }
 
