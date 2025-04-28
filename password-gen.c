@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdint.h> // For uint32_t
+#include <limits.h> // For INT_MAX, INT_MIN
 #ifdef _WIN32
 #include <windows.h>
 #include <bcrypt.h>
@@ -38,8 +39,9 @@ int generatePassword(int length, char *password) {
 #elif defined(__APPLE__) // macOS and iOS
         arc4random_buf(&random_value, sizeof(random_value));
 #else
-        if (getrandom(&random_value, sizeof(random_value), GRND_NONBLOCK) != sizeof(random_value)) {
-            fprintf(stderr, "Error generating random number.\n");
+        ssize_t bytes_read = getrandom(&random_value, sizeof(random_value), GRND_NONBLOCK);
+        if (bytes_read != sizeof(random_value)) {
+            fprintf(stderr, "Error generating random number: %s\n", strerror(errno));
             return -1;
         }
 #endif
@@ -155,11 +157,9 @@ int main() {
         printf("%d: %s\n", i + 1, password); // Print the password
         fprintf(file, "%s\n", password);    // Save the password to the file
         free(password); // Free the allocated memory
-        password = NULL; // Reset password pointer after freeing
     }
 
     fclose(file); // Close the file
-    file = NULL;     // Reset file pointer after closing
     printf("\nAll passwords saved to 'passwords.txt'.\n");
 
     return 0;
